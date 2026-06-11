@@ -216,3 +216,68 @@
 
                 // 智慧結構掃描
                 etymonEngine.prefixes.forEach(p => {
+                    if (word.startsWith(p.code) && word.length > p.code.length) {
+                        componentList.innerHTML += createBadgeRow('字首', p.code + '-', p.mean);
+                        hasAnnotation = true;
+                    }
+                });
+                etymonEngine.roots.forEach(r => {
+                    if (word.includes(r.code)) {
+                        componentList.innerHTML += createBadgeRow('字根', r.code, r.mean);
+                        hasAnnotation = true;
+                    }
+                });
+                etymonEngine.suffixes.forEach(s => {
+                    if (word.endsWith(s.code) && word.length > s.code.length) {
+                        componentList.innerHTML += createBadgeRow('字尾', '-' + s.code, s.mean);
+                        hasAnnotation = true;
+                    }
+                });
+
+                if (hasAnnotation) {
+                    document.getElementById('etymonAnnotationBlock').classList.remove('hidden');
+                }
+
+                // ====== Q1 落地：生成 A+B 情境分類與中文對照例句 ======
+                const exampleListContainer = document.getElementById('exampleList');
+                exampleListContainer.innerHTML = '';
+
+                if (translatedExamples.length > 0) {
+                    document.getElementById('exampleBlock').classList.remove('hidden');
+                    translatedExamples.forEach((ex, index) => {
+                        // 根據詞性進行智慧「情境場景分類」(B方案)
+                        let contextTag = "日常應用";
+                        if (ex.pos === "noun" && word.length > 7) contextTag = "商務/學術";
+                        if (ex.pos === "verb") contextTag = "動態描述";
+
+                        exampleListContainer.innerHTML += `
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60 text-xs space-y-1">
+                                <div class="flex items-center justify-between text-[9px] text-slate-400 font-bold">
+                                    <span>情境語境 ${index + 1}</span>
+                                    <span class="bg-slate-200/60 px-1 py-0.2 rounded text-slate-500">${contextTag}</span>
+                                </div>
+                                <p class="text-slate-800 font-mono italic">"${ex.eng}"</p>
+                                <p class="text-slate-500 font-medium pt-0.5 border-t border-slate-200/40">💡 翻譯：${ex.zht}</p>
+                            </div>
+                        `;
+                    });
+                }
+
+            } else {
+                document.getElementById('resultArea').classList.add('hidden');
+                document.getElementById('errorArea').classList.remove('hidden');
+            }
+        }
+
+        function createBadgeRow(label, code, mean) {
+            return `<div class="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-100 text-xs">
+                <span class="font-mono font-bold text-slate-900">${code} <span class="text-[9px] font-normal text-slate-400 uppercase">(${label})</span></span>
+                <span class="text-slate-500 text-[11px]">${mean}</span>
+            </div>`;
+        }
+
+        document.getElementById('scanBtn').addEventListener('click', masterSearch);
+        wordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') masterSearch(); });
+    </script>
+</body>
+</html>
