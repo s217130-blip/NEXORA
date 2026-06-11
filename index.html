@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora Word-Scanner v1.0 - 極簡白單字掃描儀</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-slate-800 antialiased selection:bg-slate-200">
+
+    <div class="w-full max-w-xl bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100">
+        
+        <div class="text-center mb-8">
+            <span class="inline-block bg-slate-100 text-slate-600 text-[10px] px-2.5 py-1 rounded-md font-bold tracking-wider mb-2 border border-slate-200/60">
+                Nexora Official v1.0
+            </span>
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">單字 X 光掃描儀</h1>
+            <p class="text-slate-400 text-xs mt-1.5">一鍵看穿現代字義，並自動透視內在字根骨架</p>
+        </div>
+
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-bold tracking-wider text-slate-500 mb-2">輸入英文單字進行掃描：</label>
+                <div class="flex gap-2">
+                    <input id="wordInput" type="text" placeholder="例如: cat, transport, prescription, dynamic..." 
+                           class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:bg-white font-mono text-base transition">
+                    <button id="scanBtn" 
+                            class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold transition transform active:scale-95 shadow-sm text-sm min-w-[100px]">
+                        開始掃描
+                    </button>
+                </div>
+            </div>
+            <div id="statusNotice" class="text-xs font-medium text-rose-500 hidden"></div>
+        </div>
+
+        <hr class="my-6 border-slate-100">
+
+        <div id="loadingArea" class="hidden text-center py-6 text-slate-400 text-sm font-mono animate-pulse">
+            🔍 X-Ray Scanning Word Structure...
+        </div>
+
+        <div id="resultArea" class="hidden space-y-5">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-2xl font-mono font-bold text-slate-900 tracking-wide uppercase" id="resultWord">WORD</h3>
+                        <span id="resultPhonetic" class="text-xs text-slate-400 font-mono">/音標/</span>
+                    </div>
+                </div>
+                <div>
+                    <span id="partOfSpeechTag" class="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded font-mono font-bold uppercase">POS</span>
+                </div>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="bg-slate-50 border border-slate-200/60 p-4 rounded-xl">
+                    <span class="text-[10px] text-slate-400 block uppercase font-bold font-mono tracking-wider">中文語義翻譯</span>
+                    <p class="text-slate-900 text-base font-bold mt-1" id="chineseTranslation">翻譯載入中...</p>
+                </div>
+
+                <div class="px-1">
+                    <span class="text-[10px] text-slate-400 block uppercase font-bold font-mono tracking-wider">English Definition</span>
+                    <p class="text-slate-600 text-sm leading-relaxed mt-1" id="totalMeaning">載入中...</p>
+                </div>
+                
+                <div id="exampleBlock" class="pt-4 border-t border-slate-100 hidden">
+                    <span class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider mb-2">Context Examples (不同情境語境)</span>
+                    <div id="exampleList" class="space-y-2.5"></div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50/50 border border-slate-200/60 p-4 rounded-xl space-y-3 hidden" id="etymonAnnotationBlock">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                    <span class="text-xs font-bold text-slate-700 uppercase tracking-wider font-mono">X 光字根結構加註</span>
+                </div>
+                <div id="componentList" class="space-y-1.5 text-xs border-b border-slate-200/60 pb-3"></div>
+                <p class="text-slate-500 text-xs leading-relaxed italic" id="etymonLogicText"></p>
+            </div>
+
+        </div>
+
+        <div id="errorArea" class="hidden text-center py-6 text-rose-500 text-sm border border-dashed border-rose-200 rounded-xl bg-rose-50/30">
+            ❌ 掃描失敗：雲端資料庫查無此字，請確認拼字。
+        </div>
+    </div>
+
+    <script>
+        // 【1.0 核心字根元件數據矩陣】
+        const prefixes = [
+            { code: "trans", meaning: "橫過、穿過、轉移 (across)", zh: "跨越/轉移" }, 
+            { code: "contra", meaning: "反對、相反 (against)", zh: "相反/對抗" },
+            { code: "inter", meaning: "在……之間 (between)", zh: "相互/之間" }, 
+            { code: "sub", meaning: "在……之下 (under)", zh: "下方/次要" },
+            { code: "con", meaning: "共同、一起 (together)", zh: "共同/加強" }, 
+            { code: "com", meaning: "共同、一起 (together)", zh: "共同/一起" },
+            { code: "dis", meaning: "不、相反、分離 (not)", zh: "否定/分離" }, 
+            { code: "pre", meaning: "在……之前 (before)", zh: "提前/在先" },
+            { code: "pro", meaning: "向前、贊同 (forward)", zh: "向前/支持" }, 
+            { code: "re", meaning: "再次、向後 (again)", zh: "再次/返回" },
+            { code: "in", meaning: "不、無、進入 (not / into)", zh: "進入/否定" }, 
+            { code: "un", meaning: "不、相反 (not)", zh: "不/相反" }
+        ];
+
+        const roots = [
+            { code: "port", meaning: "拿、運、搬 (to carry)", zh: "搬運/攜帶" }, 
+            { code: "dict", meaning: "說、言 (to speak)", zh: "言語/說法" },
+            { code: "vis", meaning: "看 (to see)", zh: "看見/視線" }, 
+            { code: "spect", meaning: "看、觀察 (to look)", zh: "觀看/審視" },
+            { code: "scrib", meaning: "寫 (to write)", zh: "書寫/記錄" }, 
+            { code: "script", meaning: "寫、稿件 (write)", zh: "書寫/文本" },
+            { code: "tract", meaning: "拉、抽、引 (to pull)", zh: "拉引/抽取" }, 
+            { code: "press", meaning: "壓、按 (to press)", zh: "擠壓/按壓" },
+            { code: "duct", meaning: "引導、帶領 (to lead)", zh: "引導/帶領" }, 
+            { code: "bio", meaning: "生命、生物 (life)", zh: "生命/生物" },
+            { code: "geo", meaning: "土地、地球 (earth)", zh: "土地/地球" }, 
+            { code: "log", meaning: "言語、研究 (study)", zh: "研究/學說" }
+        ];
+
+        const suffixes = [
+            { code: "logy", meaning: "……學、研究 (study of)", zh: "學科" }, 
+            { code: "tion", meaning: "名詞字尾：表示狀態或動作", zh: "動作/狀態名詞" },
+            { code: "ize", meaning: "動詞字尾：使成為……", zh: "使成為(動詞)" }, 
+            { code: "ible", meaning: "形容詞字尾：可……的", zh: "可...的(形容詞)" },
+            { code: "able", meaning: "形容詞字尾：可……的", zh: "能...的(形容詞)" }, 
+            { code: "er", meaning: "名詞字尾：人或物", zh: "從事者/物" }
+        ];
+
+        const wordInput = document.getElementById('wordInput');
+        const statusNotice = document.getElementById('statusNotice');
+
+        // ====== 核心查詢調度程式 ======
+        async function masterSearch() {
+            const word = wordInput.value.trim().toLowerCase();
+            
+            // 重置 UI
+            statusNotice.classList.add('hidden');
+            document.getElementById('resultArea').classList.add('hidden');
+            document.getElementById('errorArea').classList.add('hidden');
+            document.getElementById('exampleBlock').classList.add('hidden');
+            document.getElementById('etymonAnnotationBlock').classList.add('hidden');
+
+            if (!word) { statusNotice.innerText = "⚠️ 請輸入您要掃描的英文單字。"; statusNotice.classList.remove('hidden'); return; }
+            if (/[^a-zA-Z]/.test(word)) { statusNotice.innerText = "⚠️ 僅支援純英文字母，請移除數字或特殊符號。"; statusNotice.classList.remove('hidden'); return; }
+
+            document.getElementById('loadingArea').classList.remove('hidden');
+
+            let cloudData = null;
+            let chineseTranslationText = "";
+
+            try {
+                // 1. 雲端英英大字典與多例句
+                const dictResponse = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+                if (dictResponse.ok) {
+                    const dictData = await dictResponse.json();
+                    if (Array.isArray(dictData) && dictData.length > 0) cloudData = dictData[0];
+                }
+
+                // 2. 雲端翻譯（確保任何詞都有中文）
+                const transResponse = await fetch(`https://api.mymemory.translated.net/get?q=${word}&langpair=en|zh-TW`);
+                if (transResponse.ok) {
+                    const transData = await transResponse.json();
+                    if (transData && transData.responseData) {
+                        chineseTranslationText = transData.responseData.translatedText;
+                    }
+                }
+            } catch (err) {
+                console.error("Scanning connection error: ", err);
+            }
+
+            document.getElementById('loadingArea').classList.add('hidden');
+
+            if (cloudData || chineseTranslationText) {
+                document.getElementById('resultArea').classList.remove('hidden');
+                document.getElementById('resultWord').innerText = word;
+                document.getElementById('chineseTranslation').innerText = chineseTranslationText || "（暫無中文釋義）";
+                document.getElementById('resultPhonetic').innerText = cloudData && cloudData.phonetic ? cloudData.phonetic : '';
+                
+                const partOfSpeech = cloudData && cloudData.meanings && cloudData.meanings[0] ? cloudData.meanings[0].partOfSpeech : '詞彙';
+                const definition = cloudData && cloudData.meanings && cloudData.meanings[0] ? cloudData.meanings[0].definitions[0].definition : 'Cloud definition loaded.';
+                
+                document.getElementById('partOfSpeechTag').innerText = partOfSpeech;
+                document.getElementById('totalMeaning').innerText = definition;
+
+                // ====== 智慧掃描加註邏輯 ======
+                let hasPrefix = false, hasRoot = false, hasSuffix = false;
+                let logicSummary = [];
+                const componentList = document.getElementById('componentList');
+                componentList.innerHTML = ''; 
+
+                for (let p of prefixes) {
+                    if (word.startsWith(p.code) && word.length > p.code.length) {
+                        componentList.innerHTML += createAnnotationRow('字首', p.code + '-', p.meaning);
+                        logicSummary.push(`字首「${p.zh}」`); hasPrefix = true; break;
+                    }
+                }
+                for (let s of suffixes) {
+                    if (word.endsWith(s.code) && word.length > s.code.length) {
+                        componentList.innerHTML += createAnnotationRow('字尾', '-' + s.code, s.meaning);
+                        logicSummary.push(`字尾特徵「${s.zh}」`); hasSuffix = true; break;
+                    }
+                }
+                for (let r of roots) {
+                    if (word.includes(r.code)) {
+                        componentList.innerHTML += createAnnotationRow('字根', r.code, r.meaning);
+                        logicSummary.push(`核心字根「${r.zh}」`); hasRoot = true; break;
+                    }
+                }
+
+                if (hasPrefix || hasRoot || hasSuffix) {
+                    document.getElementById('etymonAnnotationBlock').classList.remove('hidden');
+                    document.getElementById('etymonLogicText').innerText = `*透視加註：本字由 ${logicSummary.join(' ＋ ')} 組成。`;
+                }
+
+                // ====== 所有例句完全生成 ======
+                const exampleListContainer = document.getElementById('exampleList');
+                exampleListContainer.innerHTML = ''; 
+                let exampleCount = 0;
+
+                if (cloudData && cloudData.meanings) {
+                    cloudData.meanings.forEach(meaning => {
+                        meaning.definitions.forEach(def => {
+                            if (def.example) {
+                                exampleCount++;
+                                exampleListContainer.innerHTML += `
+                                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200/60 font-mono text-xs text-slate-700">
+                                        <span class="text-[9px] text-slate-400 block font-bold uppercase mb-1">情境 ${exampleCount}</span>
+                                        <p class="leading-relaxed italic">"${def.example}"</p>
+                                    </div>
+                                `;
+                            }
+                        });
+                    });
+                }
+
+                if (exampleCount > 0) {
+                    document.getElementById('exampleBlock').classList.remove('hidden');
+                }
+
+            } else {
+                document.getElementById('resultArea').classList.add('hidden');
+                document.getElementById('errorArea').classList.remove('hidden');
+            }
+        }
+
+        function createAnnotationRow(label, code, meaning) {
+            return `<div class="flex items-center justify-between py-1 border-b border-slate-100 last:border-0 text-slate-600">
+                <div class="flex items-center gap-2">
+                    <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-500">${label}</span>
+                    <span class="font-mono font-bold tracking-wide text-slate-800">${code}</span>
+                </div>
+                <span class="text-slate-500 text-xs">${meaning}</span>
+            </div>`;
+        }
+
+        document.getElementById('scanBtn').addEventListener('click', masterSearch);
+        wordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') masterSearch(); });
+    </script>
+</body>
+</html>
