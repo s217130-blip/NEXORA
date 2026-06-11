@@ -3,41 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexora Word-Scanner v1.2</title>
+    <title>Nexora Word-Scanner v1.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 針對手機鍵盤彈出時的滾動優化 */
         body { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-start p-4 md:p-8 font-sans text-slate-800 antialiased selection:bg-slate-200">
+<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-start p-4 font-sans text-slate-800 antialiased selection:bg-slate-200">
 
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 md:p-6 mt-2 mb-8">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 mt-2 mb-24">
         
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mb-5">
             <div>
                 <h1 class="text-xl font-bold text-slate-900 tracking-tight">Word-Scanner</h1>
-                <p class="text-slate-400 text-[11px] mt-0.5">X 光單字透視儀 · Mobile v1.2</p>
+                <p class="text-slate-400 text-[11px] mt-0.5">X 光單字透視儀 · Mobile v1.3</p>
             </div>
             <span class="bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded font-mono border border-slate-200/60">
-                1.00% COVERAGE
+                100% COVERAGE
             </span>
         </div>
 
-        <div class="space-y-3">
-            <div class="flex flex-col gap-2">
-                <input id="wordInput" type="text" inputmode="search" placeholder="輸入單字，例如: cat, interaction..." 
-                       class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white font-mono text-base transition">
-                
-                <div class="flex gap-2">
-                    <button id="scanBtn" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-bold transition active:scale-95 shadow-sm text-sm">
-                        開始掃描
-                    </button>
-                    <button id="clearBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-500 px-4 rounded-xl text-sm transition">
-                        清除
-                    </button>
-                </div>
-            </div>
+        <div class="space-y-2">
+            <label class="block text-xs font-bold tracking-wider text-slate-500">輸入英文單字：</label>
+            <input id="wordInput" type="text" inputmode="search" placeholder="試試輸入: cat, transport..." 
+                   class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white font-mono text-base transition">
             <div id="statusNotice" class="text-xs font-medium text-rose-500 hidden px-1"></div>
         </div>
 
@@ -85,8 +74,19 @@
         </div>
     </div>
 
+    <div class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200/60 p-4 flex justify-center z-50 shadow-lg">
+        <div class="w-full max-w-md flex gap-2">
+            <button id="clearBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-500 px-5 rounded-xl text-sm font-medium transition">
+                清除
+            </button>
+            <button id="scanBtn" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-xl font-bold transition active:scale-95 shadow-sm text-sm tracking-wide">
+                開始掃描單字
+            </button>
+        </div>
+    </div>
+
     <script>
-        // 字根大數據矩陣（全面擴充，具備自動中文映射機制）
+        // 字根大數據矩陣
         const etymonEngine = {
             prefixes: [
                 { code: "trans", mean: "橫過/轉移 (across)" }, { code: "contra", mean: "反對/相反 (against)" },
@@ -115,7 +115,7 @@
         const wordInput = document.getElementById('wordInput');
         const statusNotice = document.getElementById('statusNotice');
 
-        // 一鍵清除功能 (手機族最愛)
+        // 一鍵清除功能
         document.getElementById('clearBtn').addEventListener('click', () => {
             wordInput.value = '';
             wordInput.focus();
@@ -125,7 +125,7 @@
         async function masterSearch() {
             const word = wordInput.value.trim().toLowerCase();
             
-            // 收起手機鍵盤
+            // 收起手機軟體鍵盤
             wordInput.blur();
 
             // 重置 UI
@@ -145,36 +145,31 @@
             let translatedExamples = [];
 
             try {
-                // 1. 抓取大字典
+                // 1. 雲端字典
                 const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
                 if (dictRes.ok) {
                     const dictData = await dictRes.json();
                     if (Array.isArray(dictData)) cloudDict = dictData[0];
                 }
 
-                // 2. 雙向 AI 翻譯整合（確保單字與例句都有中文）
-                // 我們一次把單字和要翻譯的內容打包送給翻譯引擎，優化速度
+                // 2. 雲端雙向翻譯
                 const transRes = await fetch(`https://api.mymemory.translated.net/get?q=${word}&langpair=en|zh-TW`);
                 if (transRes.ok) {
                     const transData = await transRes.json();
                     if (transData && transData.responseData) mainChinese = transData.responseData.translatedText;
                 }
 
-                // 如果字典裡有英文例句，異步為每個英文例句線上生成中文對照 (A+B 完美解)
+                // 3. 例句與中文一併生成 (A+B)
                 if (cloudDict && cloudDict.meanings) {
                     let tempExamples = [];
                     cloudDict.meanings.forEach(m => {
                         m.definitions.forEach(d => {
-                            if (d.example && tempExamples.length < 3) { // 手機版限制最多3條，避免滑到手酸
-                                tempExamples.push({
-                                    eng: d.example,
-                                    pos: m.partOfSpeech
-                                });
+                            if (d.example && tempExamples.length < 3) {
+                                tempExamples.push({ eng: d.example, pos: m.partOfSpeech });
                             }
                         });
                     });
 
-                    // 為抓到的所有例句進行動態中文翻譯生成
                     for (let item of tempExamples) {
                         try {
                             const exTransRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(item.eng)}&langpair=en|zh-TW`);
@@ -187,7 +182,7 @@
                                 });
                             }
                         } catch(e) {
-                            translatedExamples.push({ eng: item.eng, zht: "點擊例句查看延伸語境", pos: item.pos });
+                            translatedExamples.push({ eng: item.eng, zht: "暫無雙語對照", pos: item.pos });
                         }
                     }
                 }
@@ -209,12 +204,11 @@
                 document.getElementById('partOfSpeechTag').innerText = pos;
                 document.getElementById('totalMeaning').innerText = def;
 
-                // ====== 100% 動態字根透視演算法 ======
+                // ====== 字根掃描 ======
                 const componentList = document.getElementById('componentList');
                 componentList.innerHTML = '';
                 let hasAnnotation = false;
 
-                // 智慧結構掃描
                 etymonEngine.prefixes.forEach(p => {
                     if (word.startsWith(p.code) && word.length > p.code.length) {
                         componentList.innerHTML += createBadgeRow('字首', p.code + '-', p.mean);
@@ -238,14 +232,13 @@
                     document.getElementById('etymonAnnotationBlock').classList.remove('hidden');
                 }
 
-                // ====== Q1 落地：生成 A+B 情境分類與中文對照例句 ======
+                // ====== 例句生成 ======
                 const exampleListContainer = document.getElementById('exampleList');
                 exampleListContainer.innerHTML = '';
 
                 if (translatedExamples.length > 0) {
                     document.getElementById('exampleBlock').classList.remove('hidden');
                     translatedExamples.forEach((ex, index) => {
-                        // 根據詞性進行智慧「情境場景分類」(B方案)
                         let contextTag = "日常應用";
                         if (ex.pos === "noun" && word.length > 7) contextTag = "商務/學術";
                         if (ex.pos === "verb") contextTag = "動態描述";
@@ -263,6 +256,9 @@
                     });
                 }
 
+                // 自動滑動到結果頂端，避免被按鈕擋住
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
             } else {
                 document.getElementById('resultArea').classList.add('hidden');
                 document.getElementById('errorArea').classList.remove('hidden');
@@ -276,6 +272,7 @@
             </div>`;
         }
 
+        // 監聽
         document.getElementById('scanBtn').addEventListener('click', masterSearch);
         wordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') masterSearch(); });
     </script>
