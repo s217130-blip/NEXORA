@@ -46,18 +46,11 @@
                         <h3 class="text-3xl font-mono font-bold text-slate-950 uppercase tracking-wide" id="resultWord">WORD</h3>
                         <span id="resultPhonetic" class="text-sm text-slate-400 font-mono">/音標/</span>
                     </div>
-                    <span id="partOfSpeechTag" class="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded font-mono font-bold uppercase">POS</span>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-slate-900 text-white p-4 rounded-xl">
-                        <span class="text-[9px] text-slate-400 block uppercase font-mono tracking-wider">繁體中文語義</span>
-                        <p class="text-white text-lg font-bold mt-0.5" id="chineseTranslation">貓</p>
-                    </div>
-                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                        <span class="text-[9px] text-slate-400 block uppercase font-mono tracking-wider">English Definition</span>
-                        <p class="text-slate-600 text-xs leading-relaxed mt-0.5" id="totalMeaning">Definition</p>
-                    </div>
+                <div class="space-y-4">
+                    <span class="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Multifaceted Definitions (一字多義核心檢索)</span>
+                    <div id="meaningsContainer" class="space-y-4"></div>
                 </div>
 
                 <div class="bg-slate-50/50 border border-slate-200/60 p-4 rounded-xl space-y-2 hidden" id="etymonAnnotationBlock">
@@ -86,7 +79,6 @@
     </div>
 
     <script>
-        // 精簡、去蕪存菁的字根數據庫
         const etymonEngine = {
             prefixes: [
                 { code: "trans", mean: "跨越/轉移 (across)" }, { code: "contra", mean: "相反/對抗 (against)" },
@@ -115,7 +107,6 @@
         const wordInput = document.getElementById('wordInput');
         const statusNotice = document.getElementById('statusNotice');
 
-        // 清除與重新聚焦邏輯
         function clearInput() { wordInput.value = ''; wordInput.focus(); }
         document.getElementById('clearBtnPC').addEventListener('click', clearInput);
         document.getElementById('clearBtnMob').addEventListener('click', clearInput);
@@ -137,21 +128,53 @@
 
             document.getElementById('loadingArea').classList.remove('hidden');
 
-            let cloudDict = null, mainChinese = "", translatedExamples = [];
+            let cloudDict = null;
+            let multiMeaningsData = [];
+            let translatedExamples = [];
 
             try {
-                // 1. 異步並行請求：大字典 ＆ 線上繁體中文翻譯
-                const [dictRes, transRes] = await Promise.all([
-                    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`).then(r => r.ok ? r.json() : null),
-                    fetch(`https://api.mymemory.translated.net/get?q=${word}&langpair=en|zh-TW`).then(r => r.ok ? r.json() : null)
-                ]);
+                // 1. 抓取主要字典 API
+                const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`).then(r => r.ok ? r.json() : null);
 
-                if (dictRes && Array.isArray(dictRes)) cloudDict = dictRes[0];
-                if (transRes && transRes.responseData) mainChinese = transRes.responseData.translatedText;
+                if (dictRes && Array.isArray(dictRes)) {
+                    cloudDict = dictRes[0];
 
-                // 2. 例句深度生成（A+B 情境對照方案）
-                if (cloudDict && cloudDict.meanings) {
-                    let tempExamples = [];
+                    // 2. 遍歷所有的詞性與含義 (解決一字多義問題)
+                    if (cloudDict.meanings) {
+                        for (let m of cloudDict.meanings) {
+                            const pos = m.partOfSpeech;
+                            const firstDef = m.definitions[0]?.definition || '';
+                            
+                            if (firstDef) {
+                                // 針對每一個定義，線上即時翻譯成繁體中文
+                                let zhTranslation = "翻譯載入失敗";
+                                try {
+                                    const transRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(firstDef)}&langpair=en|zh-TW`).then(r => r.json());
+                                    if (transRes?.responseData) {
+                                        zhTranslation = transRes.responseData.translatedText;
+                                    }
+                                } catch (e) { console.error(e); }
+
+                                multiMeaningsData.push({
+                                    pos: pos,
+                                    engDef: firstDef,
+                                    zhDef: zhTranslation
+                                });
+                            }
+
+                            // 收集例句 (限制最多 3 個)
+                            m.definitions.forEach(d => {
+                                if (d.example && tempExamples.length < 3) {
+                                    tempExamples.push({ eng: d.example, pos: pos });
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // 3. 例句即時翻譯處理
+                let tempExamples = [];
+                if (cloudDict?.meanings) {
                     cloudDict.meanings.forEach(m => {
                         m.definitions.forEach(d => {
                             if (d.example && tempExamples.length < 3) {
@@ -160,7 +183,6 @@
                         });
                     });
 
-                    // 為各個例句線上解析繁體中文
                     for (let item of tempExamples) {
                         try {
                             const exTrans = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(item.eng)}&langpair=en|zh-TW`).then(r => r.json());
@@ -170,20 +192,34 @@
                         }
                     }
                 }
+
             } catch (err) { console.error(err); }
 
             document.getElementById('loadingArea').classList.add('hidden');
 
-            if (cloudDict || mainChinese) {
+            if (cloudDict && multiMeaningsData.length > 0) {
                 document.getElementById('resultArea').classList.remove('hidden');
                 document.getElementById('resultWord').innerText = word;
-                document.getElementById('chineseTranslation').innerText = mainChinese || "未知語義";
                 document.getElementById('resultPhonetic').innerText = cloudDict?.phonetic || '';
                 
-                const pos = cloudDict?.meanings[0]?.partOfSpeech || '詞彙';
-                const def = cloudDict?.meanings[0]?.definitions[0]?.definition || 'Dictionary data loaded.';
-                document.getElementById('partOfSpeechTag').innerText = pos;
-                document.getElementById('totalMeaning').innerText = def;
+                // 渲染一字多義區塊
+                const meaningsContainer = document.getElementById('meaningsContainer');
+                meaningsContainer.innerHTML = '';
+                
+                multiMeaningsData.forEach(item => {
+                    meaningsContainer.innerHTML += `
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 border border-slate-200/60 rounded-xl p-3 bg-slate-50/50">
+                            <div class="flex items-center gap-2 md:col-span-1">
+                                <span class="text-xs bg-slate-900 text-white font-mono font-bold px-2 py-1 rounded uppercase tracking-wider">${item.pos}</span>
+                            </div>
+                            <div class="md:col-span-2 space-y-1">
+                                <div class="text-xs text-slate-400 font-mono uppercase tracking-wider text-[9px]">語義與定義</div>
+                                <p class="text-slate-900 font-bold text-sm">💡 中文：${item.zhDef}</p>
+                                <p class="text-slate-500 text-xs font-mono leading-relaxed">📖 Eng: ${item.engDef}</p>
+                            </div>
+                        </div>
+                    `;
+                });
 
                 // 字根比對
                 const componentList = document.getElementById('componentList');
@@ -241,10 +277,16 @@
             </div>`;
         }
 
-        // 電腦與手機事件通用綁定
         document.getElementById('scanBtnPC').addEventListener('click', masterSearch);
         document.getElementById('scanBtnMob').addEventListener('click', masterSearch);
         wordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') masterSearch(); });
     </script>
 </body>
 </html>
+// 正確的一字多義寫法：用迴圈跑出所有詞性與定義
+cloudDict.meanings.forEach(m => {
+    const pos = m.partOfSpeech;          // 這裡能拿到每一種詞性 (如 noun, verb)
+    const def = m.definitions[0].definition; // 這裡能拿到該詞性的第一個定義
+    
+    // 接下來要把 pos 和 def 送去翻譯，並渲染到網頁畫面上...
+});
