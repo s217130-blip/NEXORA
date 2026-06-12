@@ -290,3 +290,71 @@
   </script>
 </body>
 </html>
+const express = require('express');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ❗❗ 請在此處填入你真正申請到的 Gemini API Key ❗❗
+// 放在伺服器端別人永遠看不到
+const GEMINI_API_KEY = '你的_AIzaSy_金鑰貼在這裡'; 
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname))); // 讓前端網頁可以正常讀取
+
+// API 中轉路由
+app.post('/api/search', async (req, requireResponse) => {
+  try {
+    const { word } = req.body;
+    if (!word) return requireResponse.status(400).json({ error: 'Word is required' });
+
+    const prompt = `你是一個專業的多益（TOEIC）英漢辭典系統，專門為台灣學習者提供精準的繁體中文（台灣用語）定義。
+請分析英文單字 "${word}" 並嚴格符合以下要求：
+1. 提供所有常見於多益考試的詞性與含義
+2. 中文定義必須使用台灣自然語言（例如 initially = 起初、最初；conference = 會議、研討會）
+3. 絕對禁止生硬直譯或中國大陸用語
+4. 每個主要詞性生成一個多益常見情境例句
+5. toeicFreq 評估多益頻率：high/medium/low
+
+嚴格以純 JSON 格式回傳，不含任何 markdown 標記或 \`\`\`：
+{
+  "word": "${word}",
+  "phonetic": "KK音標",
+  "toeicFreq": "high",
+  "meanings": [
+    { "pos": "詞性", "zhDef": "台灣繁體中文定義", "engDef": "簡明英文釋義" }
+  ],
+  "examples": [
+    { "pos": "詞性", "eng": "英文例句", "zht": "繁體中文翻譯", "tag": "情境標籤" }
+  ]
+}`;
+
+    // 在後端悄悄帶上你的 API 金鑰發送請求
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      }
+    );
+
+    const data = await response.json();
+    if (data.error) return requireResponse.status(500).json({ error: data.error.message });
+
+    let rawText = data.candidates[0].content.parts[0].text;
+    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // 把結果轉發給前端
+    requireResponse.json(JSON.parse(rawText));
+
+  } catch (err) {
+    console.error(err);
+    requireResponse.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
