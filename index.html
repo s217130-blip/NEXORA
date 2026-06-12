@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexora Word-Scanner v2.0</title>
+    <title>Nexora Word-Scanner v2.5 (Gemini AI Powered)</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased selection:bg-slate-200 p-4 md:p-12 flex justify-center items-start">
@@ -13,30 +13,30 @@
         <div class="w-full md:w-80 shrink-0 space-y-5">
             <div>
                 <h1 class="text-2xl font-black text-slate-950 tracking-tight">Word-Scanner</h1>
-                <p class="text-slate-400 text-xs mt-0.5">Nexora 雙端響應式出版系統 v2.0</p>
+                <p class="text-slate-400 text-xs mt-0.5">Nexora 雙端響應式出版系統 v2.5</p>
             </div>
 
             <div class="space-y-2">
                 <label class="block text-xs font-bold text-slate-500 tracking-wider">輸入英文單字：</label>
-                <input id="wordInput" type="text" inputmode="search" placeholder="例如: cat, transport, visual..." 
+                <input id="wordInput" type="text" inputmode="search" placeholder="例如: cat, transport, initially..." 
                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white font-mono text-base transition">
                 <div id="statusNotice" class="text-xs font-medium text-rose-500 hidden px-1"></div>
             </div>
 
             <div class="hidden md:flex gap-2">
                 <button id="clearBtnPC" class="bg-slate-100 hover:bg-slate-200 text-slate-500 px-4 rounded-xl text-sm font-medium transition">清除</button>
-                <button id="scanBtnPC" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-bold transition text-sm tracking-wide shadow-sm">開始掃描</button>
+                <button id="scanBtnPC" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-bold transition text-sm tracking-wide shadow-sm">開始 AI 掃描</button>
             </div>
         </div>
 
         <div class="flex-1 border-t md:border-t-0 md:border-l border-slate-100 pt-5 md:pt-0 md:pl-8 min-h-[200px]">
             
             <div id="welcomeArea" class="text-slate-300 text-center md:text-left py-12 md:py-24 font-mono text-sm">
-                📌 請在左側輸入單字並點擊掃描開始
+                📌 請在左側輸入單字並點擊掃描開始 (Gemini AI 驅動)
             </div>
 
             <div id="loadingArea" class="hidden text-center md:text-left py-12 text-slate-400 text-xs font-mono animate-pulse">
-                🔍 Connecting global dict engine...
+                🔍 Connecting Gemini AI Intelligence Engine...
             </div>
 
             <div id="resultArea" class="hidden space-y-6 animate-fadeIn">
@@ -49,7 +49,7 @@
                 </div>
                 
                 <div class="space-y-4">
-                    <span class="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Multifaceted Definitions (一字多義核心檢索)</span>
+                    <span class="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">AI Multifaceted Definitions (一字多義核心檢索)</span>
                     <div id="meaningsContainer" class="space-y-4"></div>
                 </div>
 
@@ -59,14 +59,14 @@
                 </div>
                 
                 <div id="exampleBlock" class="space-y-3 hidden">
-                    <span class="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Contextual Use Cases (出版級多情境對照)</span>
+                    <span class="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">AI Contextual Use Cases (AI 智慧情境例句)</span>
                     <div id="exampleList" class="space-y-3"></div>
                 </div>
 
             </div>
 
             <div id="errorArea" class="hidden text-center py-12 text-rose-500 text-sm border border-dashed border-rose-200 rounded-xl bg-rose-50/30">
-                ❌ 查無此字，請確認拼字是否正確。
+                ❌ AI 解析失敗，請確認網路連線或 API Key 是否正確。
             </div>
         </div>
     </div>
@@ -79,6 +79,9 @@
     </div>
 
     <script>
+        // 設定你的 Gemini API 金鑰 (請至 Google AI Studio 免費申請)
+        const GEMINI_API_KEY = '你的_GEMINI_API_KEY_貼在這裡';
+
         const etymonEngine = {
             prefixes: [
                 { code: "trans", mean: "跨越/轉移 (across)" }, { code: "contra", mean: "相反/對抗 (against)" },
@@ -111,7 +114,6 @@
         document.getElementById('clearBtnPC').addEventListener('click', clearInput);
         document.getElementById('clearBtnMob').addEventListener('click', clearInput);
 
-        // ====== 核心掃描主程式 ======
         async function masterSearch() {
             const word = wordInput.value.trim().toLowerCase();
             wordInput.blur();
@@ -128,92 +130,63 @@
 
             document.getElementById('loadingArea').classList.remove('hidden');
 
-            let cloudDict = null;
-            let multiMeaningsData = [];
-            let translatedExamples = [];
-
             try {
-                // 1. 抓取主要字典 API
-                const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`).then(r => r.ok ? r.json() : null);
+                // 建構強大的 AI 提示詞，逼迫 Gemini 回傳精準的一字多義與地道翻譯 JSON
+                const prompt = `你是一個極度精準的英漢字典出版系統。請分析英文單字 "${word}"。
+針對一字多義（多重詞性與核心含義）進行精準的在地化繁體中文（台灣）翻譯，特別注意像 initially 這類副詞或多義字，必須給出符合真實語境、優雅的字典定義，絕不能生硬直譯。
+另外，請針對各個核心詞性，人工智慧生成一個日常或學術出版級的實用英文例句，並附上精準中文對照。
 
-                if (dictRes && Array.isArray(dictRes)) {
-                    cloudDict = dictRes[0];
+請嚴格以下列 JSON 格式回傳，不要包含任何 markdown 標記（如 \`\`\`json）：
+{
+  "word": "${word}",
+  "phonetic": "KK音標或國際音標",
+  "meanings": [
+    {
+      "pos": "詞性 (如 adv., n., v., adj.)",
+      "zhDef": "精準繁體中文定義 (如：最初、起初)",
+      "engDef": "簡明英文釋義"
+    }
+  ],
+  "examples": [
+    {
+      "pos": "該例句對應的詞性",
+      "eng": "AI生成的實用高階英文例句",
+      "zht": "精準的繁體中文翻譯",
+      "tag": "情境標籤 (如: 邏輯論述, 日常應用, 商務學術)"
+    }
+  ]
+}`;
 
-                    // 2. 遍歷所有的詞性與含義 (解決一字多義問題)
-                    if (cloudDict.meanings) {
-                        for (let m of cloudDict.meanings) {
-                            const pos = m.partOfSpeech;
-                            const firstDef = m.definitions[0]?.definition || '';
-                            
-                            if (firstDef) {
-                                // 針對每一個定義，線上即時翻譯成繁體中文
-                                let zhTranslation = "翻譯載入失敗";
-                                try {
-                                    const transRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(firstDef)}&langpair=en|zh-TW`).then(r => r.json());
-                                    if (transRes?.responseData) {
-                                        zhTranslation = transRes.responseData.translatedText;
-                                    }
-                                } catch (e) { console.error(e); }
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
 
-                                multiMeaningsData.push({
-                                    pos: pos,
-                                    engDef: firstDef,
-                                    zhDef: zhTranslation
-                                });
-                            }
-
-                            // 收集例句 (限制最多 3 個)
-                            m.definitions.forEach(d => {
-                                if (d.example && tempExamples.length < 3) {
-                                    tempExamples.push({ eng: d.example, pos: pos });
-                                }
-                            });
-                        }
-                    }
-                }
-
-                // 3. 例句即時翻譯處理
-                let tempExamples = [];
-                if (cloudDict?.meanings) {
-                    cloudDict.meanings.forEach(m => {
-                        m.definitions.forEach(d => {
-                            if (d.example && tempExamples.length < 3) {
-                                tempExamples.push({ eng: d.example, pos: m.partOfSpeech });
-                            }
-                        });
-                    });
-
-                    for (let item of tempExamples) {
-                        try {
-                            const exTrans = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(item.eng)}&langpair=en|zh-TW`).then(r => r.json());
-                            translatedExamples.push({ eng: item.eng, zht: exTrans.responseData.translatedText, pos: item.pos });
-                        } catch(e) {
-                            translatedExamples.push({ eng: item.eng, zht: "暫無翻譯", pos: item.pos });
-                        }
-                    }
-                }
-
-            } catch (err) { console.error(err); }
-
-            document.getElementById('loadingArea').classList.add('hidden');
-
-            if (cloudDict && multiMeaningsData.length > 0) {
-                document.getElementById('resultArea').classList.remove('hidden');
-                document.getElementById('resultWord').innerText = word;
-                document.getElementById('resultPhonetic').innerText = cloudDict?.phonetic || '';
+                const data = await response.json();
+                let rawText = data.candidates[0].content.parts[0].text;
                 
-                // 渲染一字多義區塊
+                // 清理可能殘留的 markdown 標記
+                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const aiResult = JSON.parse(rawText);
+
+                // 渲染畫面
+                document.getElementById('loadingArea').classList.add('hidden');
+                document.getElementById('resultArea').classList.remove('hidden');
+                
+                document.getElementById('resultWord').innerText = aiResult.word;
+                document.getElementById('resultPhonetic').innerText = aiResult.phonetic ? `/${aiResult.phonetic.replace(/\//g, '')}/` : '';
+
+                // 1. 渲染一字多義
                 const meaningsContainer = document.getElementById('meaningsContainer');
                 meaningsContainer.innerHTML = '';
-                
-                multiMeaningsData.forEach(item => {
+                aiResult.meanings.forEach(item => {
                     meaningsContainer.innerHTML += `
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 border border-slate-200/60 rounded-xl p-3 bg-slate-50/50">
                             <div class="flex items-center gap-2 md:col-span-1">
                                 <span class="text-xs bg-slate-900 text-white font-mono font-bold px-2 py-1 rounded uppercase tracking-wider">${item.pos}</span>
                             </div>
                             <div class="md:col-span-2 space-y-1">
-                                <div class="text-xs text-slate-400 font-mono uppercase tracking-wider text-[9px]">語義與定義</div>
                                 <p class="text-slate-900 font-bold text-sm">💡 中文：${item.zhDef}</p>
                                 <p class="text-slate-500 text-xs font-mono leading-relaxed">📖 Eng: ${item.engDef}</p>
                             </div>
@@ -221,42 +194,26 @@
                     `;
                 });
 
-                // 字根比對
+                // 2. 渲染字根字首 (沿用原邏輯)
                 const componentList = document.getElementById('componentList');
                 componentList.innerHTML = '';
                 let hasAnnotation = false;
-
-                etymonEngine.prefixes.forEach(p => {
-                    if (word.startsWith(p.code) && word.length > p.code.length) {
-                        componentList.innerHTML += createBadgeRow('字首', p.code + '-', p.mean); hasAnnotation = true;
-                    }
-                });
-                etymonEngine.roots.forEach(r => {
-                    if (word.includes(r.code)) {
-                        componentList.innerHTML += createBadgeRow('字根', r.code, r.mean); hasAnnotation = true;
-                    }
-                });
-                etymonEngine.suffixes.forEach(s => {
-                    if (word.endsWith(s.code) && word.length > s.code.length) {
-                        componentList.innerHTML += createBadgeRow('字尾', '-' + s.code, s.mean); hasAnnotation = true;
-                    }
-                });
-
+                etymonEngine.prefixes.forEach(p => { if (word.startsWith(p.code) && word.length > p.code.length) { componentList.innerHTML += createBadgeRow('字首', p.code + '-', p.mean); hasAnnotation = true; } });
+                etymonEngine.roots.forEach(r => { if (word.includes(r.code)) { componentList.innerHTML += createBadgeRow('字根', r.code, r.mean); hasAnnotation = true; } });
+                etymonEngine.suffixes.forEach(s => { if (word.endsWith(s.code) && word.length > s.code.length) { componentList.innerHTML += createBadgeRow('字尾', '-' + s.code, s.mean); hasAnnotation = true; } });
                 if (hasAnnotation) document.getElementById('etymonAnnotationBlock').classList.remove('hidden');
 
-                // 例句渲染
+                // 3. 渲染 AI 智慧例句
                 const exampleListContainer = document.getElementById('exampleList');
                 exampleListContainer.innerHTML = '';
-
-                if (translatedExamples.length > 0) {
+                if (aiResult.examples && aiResult.examples.length > 0) {
                     document.getElementById('exampleBlock').classList.remove('hidden');
-                    translatedExamples.forEach((ex, index) => {
-                        let tag = ex.pos === "noun" && word.length > 7 ? "商務/學術" : ex.pos === "verb" ? "動態描述" : "日常應用";
+                    aiResult.examples.forEach((ex, index) => {
                         exampleListContainer.innerHTML += `
                             <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60 text-xs space-y-1">
                                 <div class="flex items-center justify-between text-[9px] text-slate-400 font-bold">
-                                    <span>情境語境 ${index + 1}</span>
-                                    <span class="bg-slate-200/80 px-1 py-0.2 rounded text-slate-500">${tag}</span>
+                                    <span>AI 智慧語境 ${index + 1} (${ex.pos})</span>
+                                    <span class="bg-slate-200/80 px-1 py-0.2 rounded text-slate-500">${ex.tag || '日常應用'}</span>
                                 </div>
                                 <p class="text-slate-800 font-mono italic">"${ex.eng}"</p>
                                 <p class="text-slate-500 font-medium pt-0.5 border-t border-slate-200/40">💡 翻譯：${ex.zht}</p>
@@ -264,8 +221,12 @@
                         `;
                     });
                 }
+
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loadingArea').classList.add('hidden');
                 document.getElementById('errorArea').classList.remove('hidden');
             }
         }
@@ -283,10 +244,3 @@
     </script>
 </body>
 </html>
-// 正確的一字多義寫法：用迴圈跑出所有詞性與定義
-cloudDict.meanings.forEach(m => {
-    const pos = m.partOfSpeech;          // 這裡能拿到每一種詞性 (如 noun, verb)
-    const def = m.definitions[0].definition; // 這裡能拿到該詞性的第一個定義
-    
-    // 接下來要把 pos 和 def 送去翻譯，並渲染到網頁畫面上...
-});
