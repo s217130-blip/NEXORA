@@ -17,13 +17,6 @@
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs font-bold text-slate-500 tracking-wider uppercase">Gemini API Key</label>
-        <input id="apiKeyInput" type="password" placeholder="貼上你的 AIzaSy... 金鑰"
-               class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white font-mono text-xs transition">
-        <p class="text-[10px] text-slate-400 px-1">申請：<a href="https://aistudio.google.com" target="_blank" class="underline hover:text-slate-600">aistudio.google.com</a> → Get API Key</p>
-      </div>
-
-      <div class="space-y-1.5">
         <label class="block text-xs font-bold text-slate-500 tracking-wider uppercase">輸入英文單字</label>
         <input id="wordInput" type="text" inputmode="search" placeholder="例如：conference, submit..."
                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white font-mono text-base transition">
@@ -47,7 +40,7 @@
     <div class="flex-1 border-t md:border-t-0 md:border-l border-slate-100 pt-5 md:pt-0 md:pl-8 min-h-[300px]">
 
       <div id="welcomeArea" class="text-slate-300 text-center md:text-left py-16 md:py-24 font-mono text-sm leading-loose">
-        📌 輸入 Gemini API Key 與單字，點擊掃描開始<br>
+        📌 輸入單字並點擊掃描開始<br>
         <span class="text-xs text-slate-200">多益導向 · 台灣繁體中文 · 商務情境例句</span>
       </div>
 
@@ -81,8 +74,7 @@
       </div>
 
       <div id="errorArea" class="hidden text-center py-12 text-rose-500 text-sm border border-dashed border-rose-200 rounded-xl bg-rose-50/30 px-4">
-        ❌ 解析失敗。請確認：<br>
-        <span class="text-xs text-rose-400 mt-2 block">① API Key 正確（AIzaSy... 開頭）<br>② 網路連線正常<br>③ 輸入的是純英文單字</span>
+        ❌ 解析失敗。請確認網路連線正常，且輸入的是純英文單字。
       </div>
 
     </div>
@@ -96,7 +88,7 @@
   </div>
 
   <script>
-    // ─── 精準本地化字根字首靜態資料庫 ───────────────────────────────────────────
+    // ─── 字根字首靜態資料庫 ───────────────────────────────────────────
     const etymonEngine = {
       prefixes: [
         { code: "trans",   mean: "跨越/轉移 (across)"    },
@@ -153,16 +145,13 @@
       ]
     };
 
-    // ─── DOM 元素物件模型 ──────────────────────────────────────────────
     const wordInput     = document.getElementById('wordInput');
-    const apiKeyInput   = document.getElementById('apiKeyInput');
     const statusNotice  = document.getElementById('statusNotice');
     const welcomeArea   = document.getElementById('welcomeArea');
     const loadingArea   = document.getElementById('loadingArea');
     const resultArea    = document.getElementById('resultArea');
     const errorArea     = document.getElementById('errorArea');
 
-    // ─── UI 重設功能 ──────────────────────────────────────────────────
     function clearInput() {
       wordInput.value = '';
       statusNotice.classList.add('hidden');
@@ -174,10 +163,8 @@
     document.getElementById('clearBtnPC').addEventListener('click', clearInput);
     document.getElementById('clearBtnMob').addEventListener('click', clearInput);
 
-    // ─── 核心功能：AI 檢索主邏輯 ────────────────────────────────────────────
     async function masterSearch() {
-      const word   = wordInput.value.trim().toLowerCase();
-      const apiKey = apiKeyInput.value.trim();
+      const word = wordInput.value.trim().toLowerCase();
 
       wordInput.blur();
       statusNotice.classList.add('hidden');
@@ -185,13 +172,6 @@
       resultArea.classList.add('hidden');
       errorArea.classList.add('hidden');
 
-      // 前端基礎輸入驗證
-      if (!apiKey) {
-        statusNotice.innerText = '⚠️ 請填入 Gemini API Key。';
-        statusNotice.classList.remove('hidden');
-        welcomeArea.classList.remove('hidden');
-        return;
-      }
       if (!word) {
         statusNotice.innerText = '⚠️ 請輸入英文單字。';
         statusNotice.classList.remove('hidden');
@@ -208,71 +188,29 @@
       loadingArea.classList.remove('hidden');
 
       try {
-        // 出版級 Prompt 工程設定：規範台灣在地化用語、排除中國大陸詞彙
-        const prompt = `你是一個專業的多益（TOEIC）英漢辭典系統，專門為台灣學習者提供精準的繁體中文（台灣用語）定義。
+        // 向你自己的 Node.js 後端發送請求，不用在前端暴露出 API Key
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ word: word })
+        });
 
-請分析英文單字 "${word}" 並嚴格符合以下要求：
-1. 提供所有常見於多益考試的詞性與含義
-2. 中文定義必須使用台灣自然語言（例如 initially = 起初、最初；conference = 會議、研討會；submit = 提交、繳交；negotiate = 談判、協商）
-3. 絕對禁止生硬直譯或中國大陸用語（例如不能用「提交」以外的「递交」，不能用「信息」要用「資訊」）
-4. 每個主要詞性生成一個多益常見情境例句（商務、辦公室、旅遊、電話、通知、合約）
-5. toeicFreq 評估多益頻率：high（幾乎必考）/ medium（常考）/ low（偶爾出現）
+        if (!res.ok) throw new Error('Backend server error');
+        const ai = await res.json();
 
-嚴格以純 JSON 格式回傳，不含任何 markdown 標記或 \`\`\`：
-{
-  "word": "${word}",
-  "phonetic": "KK音標",
-  "toeicFreq": "high",
-  "meanings": [
-    {
-      "pos": "詞性縮寫（如 n. / v. / adj. / adv.）",
-      "zhDef": "精準台灣繁體中文定義，逗號分隔多個意思",
-      "engDef": "簡明英文釋義（一句話）"
-    }
-  ],
-  "examples": [
-    {
-      "pos": "詞性縮寫",
-      "eng": "多益情境英文例句（自然地道）",
-      "zht": "精準的繁體中文翻譯",
-      "tag": "情境標籤（如：商務會議 / 辦公室應用 / 電話溝通 / 合約條款）"
-    }
-  ]
-}`;
-
-        // 發送 HTTP POST 到 Gemini 官方 API 節點
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-          }
-        );
-
-        const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
-
-        // JSON 文字解構與防錯清理
-        let rawText = data.candidates[0].content.parts[0].text;
-        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const ai = JSON.parse(rawText);
-
-        // ─── 資料渲染呈現 ──────────────────────────────────────────
         loadingArea.classList.add('hidden');
         resultArea.classList.remove('hidden');
 
         // 1. 單字名稱與音標
         document.getElementById('resultWord').innerText = ai.word.toUpperCase();
-        document.getElementById('resultPhonetic').innerText = ai.phonetic
-          ? `/${ai.phonetic.replace(/\//g, '')}/` : '';
+        document.getElementById('resultPhonetic').innerText = ai.phonetic ? `/${ai.phonetic.replace(/\//g, '')}/` : '';
 
-        // 2. 多益核心考頻分析標籤
+        // 2. 多益核心考頻
         const badge = document.getElementById('toeicBadge');
         const freqMap = {
           high:   { label: '多益高頻', cls: 'bg-rose-100 text-rose-600' },
           medium: { label: '多益中頻', cls: 'bg-amber-100 text-amber-600' },
-          low:    { label: '多益低頻', cls: 'bg-slate-100 text-slate-500' }
+          low:    { slate: '多益低頻', cls: 'bg-slate-100 text-slate-500' }
         };
         if (ai.toeicFreq && freqMap[ai.toeicFreq]) {
           badge.innerText = freqMap[ai.toeicFreq].label;
@@ -282,7 +220,7 @@
           badge.classList.add('hidden');
         }
 
-        // 3. 解決核心痛點：一字多義遍歷渲染
+        // 3. 一字多義遍歷渲染
         const meaningsEl = document.getElementById('meaningsContainer');
         meaningsEl.innerHTML = '';
         ai.meanings.forEach(item => {
@@ -296,34 +234,19 @@
             </div>`;
         });
 
-        // 4. 前端混合交叉比對：X 光字根字首庫
+        // 4. 前端混合比對：X 光字根字首庫
         const compEl = document.getElementById('componentList');
         const etymBlock = document.getElementById('etymonAnnotationBlock');
         compEl.innerHTML = '';
         let hasAnnotation = false;
         const w = word.toLowerCase();
 
-        etymonEngine.prefixes.forEach(p => {
-          if (w.startsWith(p.code) && w.length > p.code.length + 2) {
-            compEl.innerHTML += makeBadge('字首', p.code + '-', p.mean);
-            hasAnnotation = true;
-          }
-        });
-        etymonEngine.roots.forEach(r => {
-          if (w.includes(r.code) && w.length > r.code.length) {
-            compEl.innerHTML += makeBadge('字根', r.code, r.mean);
-            hasAnnotation = true;
-          }
-        });
-        etymonEngine.suffixes.forEach(s => {
-          if (w.endsWith(s.code) && w.length > s.code.length + 1) {
-            compEl.innerHTML += makeBadge('字尾', '-' + s.code, s.mean);
-            hasAnnotation = true;
-          }
-        });
+        etymonEngine.prefixes.forEach(p => { if (w.startsWith(p.code) && w.length > p.code.length + 2) { compEl.innerHTML += makeBadge('字首', p.code + '-', p.mean); hasAnnotation = true; } });
+        etymonEngine.roots.forEach(r => { if (w.includes(r.code) && w.length > r.code.length) { compEl.innerHTML += makeBadge('字根', r.code, r.mean); hasAnnotation = true; } });
+        etymonEngine.suffixes.forEach(s => { if (w.endsWith(s.code) && w.length > s.code.length + 1) { compEl.innerHTML += makeBadge('字尾', '-' + s.code, s.mean); hasAnnotation = true; } });
         hasAnnotation ? etymBlock.classList.remove('hidden') : etymBlock.classList.add('hidden');
 
-        // 5. 解決核心痛點：AI 智慧情境模擬多益例句
+        // 5. AI 多益例句
         const exBlock = document.getElementById('exampleBlock');
         const exList  = document.getElementById('exampleList');
         exList.innerHTML = '';
@@ -353,7 +276,6 @@
       }
     }
 
-    // ─── 字根 Badge 產生組件 ───────────────────────────────────────
     function makeBadge(label, code, mean) {
       return `
         <div class="bg-white p-2.5 rounded-lg border border-slate-200 flex justify-between items-center">
@@ -362,11 +284,9 @@
         </div>`;
     }
 
-    // ─── 事件監聽與鍵盤綁定 ────────────────────────────────────────────────
     document.getElementById('scanBtnPC').addEventListener('click', masterSearch);
     document.getElementById('scanBtnMob').addEventListener('click', masterSearch);
     wordInput.addEventListener('keypress', e => { if (e.key === 'Enter') masterSearch(); });
   </script>
-
 </body>
 </html>
