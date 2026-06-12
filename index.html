@@ -2,359 +2,125 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nexora Word-Scanner v3.0</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多益智能出題系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased p-4 md:p-10 flex justify-center items-start">
+<body class="bg-slate-50 min-h-screen p-6 md:p-12 flex justify-center items-start">
 
-  <div class="w-full max-w-5xl bg-white rounded-2xl shadow-sm border border-slate-200 p-5 md:p-8 flex flex-col md:flex-row gap-8 mb-24 md:mb-0">
+  <div class="w-full max-w-3xl bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
+    
+    <div>
+      <h1 class="text-2xl font-black text-slate-900">多益 AI 智能出題機</h1>
+      <p class="text-slate-500 text-sm mt-1">後端安全保護版 · 免輸入金鑰</p>
+    </div>
 
-    <div class="w-full md:w-72 shrink-0 space-y-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
-        <h1 class="text-2xl font-black text-slate-950 tracking-tight">Word-Scanner</h1>
-        <p class="text-slate-400 text-xs mt-0.5">Nexora 多益出版系統 v3.0 · Gemini AI</p>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">選擇難度</label>
+        <select id="difficulty" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+          <option value="初級 (多益 550 分水準)">初級 (550分)</option>
+          <option value="中級 (多益 750 分水準)">中級 (750分)</option>
+          <option value="高級 (多益 900 分水準)">高級 (900分)</option>
+        </select>
       </div>
-
-      <div class="space-y-1.5">
-        <label class="block text-xs font-bold text-slate-500 tracking-wider uppercase">輸入英文單字</label>
-        <input id="wordInput" type="text" inputmode="search" placeholder="例如：conference, submit..."
-               class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white font-mono text-base transition">
-        <div id="statusNotice" class="text-xs font-medium text-rose-500 hidden px-1"></div>
-      </div>
-
-      <div class="hidden md:flex gap-2">
-        <button id="clearBtnPC" class="bg-slate-100 hover:bg-slate-200 text-slate-500 px-4 py-3 rounded-xl text-sm font-medium transition">清除</button>
-        <button id="scanBtnPC" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-bold transition text-sm tracking-wide shadow-sm">開始 AI 掃描</button>
-      </div>
-
-      <div class="hidden md:block text-[11px] text-slate-400 leading-relaxed border-t border-slate-100 pt-4">
-        <p class="font-bold text-slate-500 mb-1">多益出題導向功能</p>
-        <p>✦ 高/中/低 頻率標示</p>
-        <p>✦ 台灣繁體中文定義</p>
-        <p>✦ 商務 / 辦公室情境例句</p>
-        <p>✦ X 光字根字首拆解</p>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">選擇情境類別</label>
+        <select id="category" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+          <option value="商務會議 (Meetings)">商務會議</option>
+          <option value="辦公室溝通 (Office)">辦公室溝通</option>
+          <option value="人事與招募 (Personnel)">人事與招募</option>
+          <option value="採購與合約 (Purchasing)">採購與合約</option>
+        </select>
       </div>
     </div>
 
-    <div class="flex-1 border-t md:border-t-0 md:border-l border-slate-100 pt-5 md:pt-0 md:pl-8 min-h-[300px]">
+    <button id="genBtn" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition text-sm">
+      🚀 生成多益考題
+    </button>
 
-      <div id="welcomeArea" class="text-slate-300 text-center md:text-left py-16 md:py-24 font-mono text-sm leading-loose">
-        📌 輸入單字並點擊掃描開始<br>
-        <span class="text-xs text-slate-200">多益導向 · 台灣繁體中文 · 商務情境例句</span>
+    <div id="loading" class="hidden text-center py-8 text-sm text-slate-500">⏳ AI 正在精心出題中...</div>
+
+    <div id="quizArea" class="hidden border border-slate-200 rounded-xl p-5 space-y-4 bg-slate-50/50">
+      <div class="bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded w-max uppercase tracking-wider">Part 5 單字文法題</div>
+      
+      <p id="qText" class="text-slate-900 font-mono text-base font-semibold leading-relaxed"></p>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="optionsBlock"></div>
+
+      <div id="analysisBlock" class="hidden border-t border-slate-200 pt-4 mt-2 space-y-2">
+        <p class="text-sm font-bold text-emerald-600">正確答案：<span id="correctAns"></span></p>
+        <p class="text-xs text-slate-700 leading-relaxed"><span class="font-bold">中文翻譯：</span><span id="qTrans"></span></p>
+        <p class="text-xs text-slate-500 leading-relaxed"><span class="font-bold">核心解析：</span><span id="qExpl"></span></p>
       </div>
-
-      <div id="loadingArea" class="hidden text-center md:text-left py-16 text-slate-400 text-xs font-mono">
-        <span class="inline-block animate-spin mr-2">⏳</span> Gemini AI 分析中，請稍候...
-      </div>
-
-      <div id="resultArea" class="hidden space-y-6">
-
-        <div class="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-4">
-          <h2 class="text-3xl font-mono font-bold text-slate-950 uppercase tracking-wide" id="resultWord"></h2>
-          <span id="resultPhonetic" class="text-sm text-slate-400 font-mono"></span>
-          <span id="toeicBadge" class="hidden text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider"></span>
-        </div>
-
-        <div>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">一字多義核心定義（多益導向）</p>
-          <div id="meaningsContainer" class="space-y-3"></div>
-        </div>
-
-        <div id="etymonAnnotationBlock" class="hidden">
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">X 光字根拆解</p>
-          <div id="componentList" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
-        </div>
-
-        <div id="exampleBlock" class="hidden">
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">多益情境例句</p>
-          <div id="exampleList" class="space-y-3"></div>
-        </div>
-
-      </div>
-
-      <div id="errorArea" class="hidden text-center py-12 text-rose-500 text-sm border border-dashed border-rose-200 rounded-xl bg-rose-50/30 px-4">
-        ❌ 解析失敗。請確認網路連線正常，且輸入的是純英文單字。
-      </div>
-
     </div>
-  </div>
 
-  <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 flex justify-center z-50">
-    <div class="w-full max-w-md flex gap-2">
-      <button id="clearBtnMob" class="bg-slate-100 text-slate-500 px-5 py-3.5 rounded-xl text-sm font-medium">清除</button>
-      <button id="scanBtnMob" class="flex-1 bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm tracking-wide">開始掃描單字</button>
-    </div>
   </div>
 
   <script>
-    // ─── 字根字首靜態資料庫 ───────────────────────────────────────────
-    const etymonEngine = {
-      prefixes: [
-        { code: "trans",   mean: "跨越/轉移 (across)"    },
-        { code: "contra",  mean: "相反/對抗 (against)"   },
-        { code: "inter",   mean: "相互/之間 (between)"   },
-        { code: "sub",     mean: "下方/次要 (under)"     },
-        { code: "con",     mean: "共同/加強 (together)"  },
-        { code: "com",     mean: "共同/一起 (together)"  },
-        { code: "dis",     mean: "否定/分離 (not)"       },
-        { code: "pre",     mean: "提前/在先 (before)"    },
-        { code: "pro",     mean: "向前/支持 (forward)"   },
-        { code: "re",      mean: "再次/返回 (again)"     },
-        { code: "in",      mean: "進入/否定 (into/not)"  },
-        { code: "un",      mean: "不/相反 (not)"         },
-        { code: "ex",      mean: "向外/前 (out/former)"  },
-        { code: "mis",     mean: "錯誤/不當 (wrongly)"   },
-        { code: "over",    mean: "過多/超越 (over)"      },
-        { code: "out",     mean: "超越/外部 (beyond)"    }
-      ],
-      roots: [
-        { code: "port",  mean: "搬運/攜帶 (carry)"   },
-        { code: "dict",  mean: "言語/說話 (speak)"   },
-        { code: "vis",   mean: "看見/視線 (see)"      },
-        { code: "spect", mean: "觀看/審視 (look)"    },
-        { code: "tract", mean: "拉引/抽取 (pull)"    },
-        { code: "press", mean: "擠壓/按壓 (press)"   },
-        { code: "duct",  mean: "引導/帶領 (lead)"    },
-        { code: "bio",   mean: "生命/生物 (life)"    },
-        { code: "geo",   mean: "土地/地球 (earth)"   },
-        { code: "log",   mean: "研究/學說 (study)"   },
-        { code: "gest",  mean: "攜帶/產生 (carry)"   },
-        { code: "ven",   mean: "來/到 (come)"        },
-        { code: "mit",   mean: "送出/投遞 (send)"    },
-        { code: "pos",   mean: "放置/提出 (place)"   },
-        { code: "fer",   mean: "攜帶/承受 (carry)"   },
-        { code: "scrib", mean: "書寫/記錄 (write)"   }
-      ],
-      suffixes: [
-        { code: "tion",  mean: "動作或狀態名詞"          },
-        { code: "ment",  mean: "結果/行為 (名詞)"         },
-        { code: "ize",   mean: "使成為 (動詞化)"          },
-        { code: "ise",   mean: "使成為 (動詞化)"          },
-        { code: "ible",  mean: "可...的 (形容詞化)"       },
-        { code: "able",  mean: "能...的 (形容詞化)"       },
-        { code: "er",    mean: "從事者/工具 (名詞化)"     },
-        { code: "ous",   mean: "充滿...的 (形容詞化)"     },
-        { code: "al",    mean: "具有...特性的"             },
-        { code: "ly",    mean: "以...方式 (副詞化)"       },
-        { code: "ness",  mean: "狀態/性質 (名詞)"         },
-        { code: "ive",   mean: "具有...傾向 (形容詞)"     },
-        { code: "ance",  mean: "狀態/行為 (名詞)"         },
-        { code: "ence",  mean: "狀態/性質 (名詞)"         },
-        { code: "ity",   mean: "性質/狀態 (抽象名詞)"     }
-      ]
-    };
+    const genBtn = document.getElementById('genBtn');
+    const loading = document.getElementById('loading');
+    const quizArea = document.getElementById('quizArea');
+    const analysisBlock = document.getElementById('analysisBlock');
 
-    const wordInput     = document.getElementById('wordInput');
-    const statusNotice  = document.getElementById('statusNotice');
-    const welcomeArea   = document.getElementById('welcomeArea');
-    const loadingArea   = document.getElementById('loadingArea');
-    const resultArea    = document.getElementById('resultArea');
-    const errorArea     = document.getElementById('errorArea');
+    genBtn.addEventListener('click', async () => {
+      loading.classList.remove('hidden');
+      quizArea.classList.add('hidden');
+      analysisBlock.classList.add('hidden');
 
-    function clearInput() {
-      wordInput.value = '';
-      statusNotice.classList.add('hidden');
-      resultArea.classList.add('hidden');
-      errorArea.classList.add('hidden');
-      welcomeArea.classList.remove('hidden');
-      wordInput.focus();
-    }
-    document.getElementById('clearBtnPC').addEventListener('click', clearInput);
-    document.getElementById('clearBtnMob').addEventListener('click', clearInput);
-
-    async function masterSearch() {
-      const word = wordInput.value.trim().toLowerCase();
-
-      wordInput.blur();
-      statusNotice.classList.add('hidden');
-      welcomeArea.classList.add('hidden');
-      resultArea.classList.add('hidden');
-      errorArea.classList.add('hidden');
-
-      if (!word) {
-        statusNotice.innerText = '⚠️ 請輸入英文單字。';
-        statusNotice.classList.remove('hidden');
-        welcomeArea.classList.remove('hidden');
-        return;
-      }
-      if (/[^a-zA-Z]/.test(word)) {
-        statusNotice.innerText = '⚠️ 僅支援純英文字母。';
-        statusNotice.classList.remove('hidden');
-        welcomeArea.classList.remove('hidden');
-        return;
-      }
-
-      loadingArea.classList.remove('hidden');
+      const difficulty = document.getElementById('difficulty').value;
+      const category = document.getElementById('category').value;
 
       try {
-        // 向你自己的 Node.js 後端發送請求，不用在前端暴露出 API Key
-        const res = await fetch('/api/search', {
+        // 連動呼叫你的 Node.js Express 後端端點
+        const res = await fetch('/api/toeic/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ word: word })
+          body: JSON.stringify({ difficulty, category })
         });
 
-        if (!res.ok) throw new Error('Backend server error');
-        const ai = await res.json();
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error);
+        
+        const qData = result.data;
 
-        loadingArea.classList.add('hidden');
-        resultArea.classList.remove('hidden');
-
-        // 1. 單字名稱與音標
-        document.getElementById('resultWord').innerText = ai.word.toUpperCase();
-        document.getElementById('resultPhonetic').innerText = ai.phonetic ? `/${ai.phonetic.replace(/\//g, '')}/` : '';
-
-        // 2. 多益核心考頻
-        const badge = document.getElementById('toeicBadge');
-        const freqMap = {
-          high:   { label: '多益高頻', cls: 'bg-rose-100 text-rose-600' },
-          medium: { label: '多益中頻', cls: 'bg-amber-100 text-amber-600' },
-          low:    { slate: '多益低頻', cls: 'bg-slate-100 text-slate-500' }
-        };
-        if (ai.toeicFreq && freqMap[ai.toeicFreq]) {
-          badge.innerText = freqMap[ai.toeicFreq].label;
-          badge.className = `text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${freqMap[ai.toeicFreq].cls}`;
-          badge.classList.remove('hidden');
-        } else {
-          badge.classList.add('hidden');
-        }
-
-        // 3. 一字多義遍歷渲染
-        const meaningsEl = document.getElementById('meaningsContainer');
-        meaningsEl.innerHTML = '';
-        ai.meanings.forEach(item => {
-          meaningsEl.innerHTML += `
-            <div class="flex gap-3 border border-slate-200 rounded-xl p-3 bg-slate-50/60 items-start">
-              <span class="text-[10px] bg-slate-900 text-white font-mono font-bold px-2 py-1 rounded-md uppercase whitespace-nowrap mt-0.5">${item.pos}</span>
-              <div>
-                <p class="text-slate-900 font-bold text-sm leading-snug">💡 ${item.zhDef}</p>
-                <p class="text-slate-500 text-xs font-mono mt-1 leading-relaxed">📖 ${item.engDef}</p>
-              </div>
-            </div>`;
+        // 渲染題目
+        document.getElementById('qText').innerText = qData.question;
+        
+        // 渲染選單
+        const optBlock = document.getElementById('optionsBlock');
+        optBlock.innerHTML = '';
+        
+        ['A', 'B', 'C', 'D'].forEach(key => {
+          optBlock.innerHTML += `
+            <button onclick="revealAnswer('${key}', '${qData.answer}')" class="w-full text-left p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 font-mono text-xs text-slate-800 transition flex items-center gap-2">
+              <span class="bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded text-[10px]">${key}</span> ${qData.options[key]}
+            </button>
+          `;
         });
 
-        // 4. 前端混合比對：X 光字根字首庫
-        const compEl = document.getElementById('componentList');
-        const etymBlock = document.getElementById('etymonAnnotationBlock');
-        compEl.innerHTML = '';
-        let hasAnnotation = false;
-        const w = word.toLowerCase();
+        // 寫入隱藏的解析內容
+        document.getElementById('correctAns').innerText = qData.answer;
+        document.getElementById('qTrans').innerText = qData.translation;
+        document.getElementById('qExpl').innerText = qData.explanation;
 
-        etymonEngine.prefixes.forEach(p => { if (w.startsWith(p.code) && w.length > p.code.length + 2) { compEl.innerHTML += makeBadge('字首', p.code + '-', p.mean); hasAnnotation = true; } });
-        etymonEngine.roots.forEach(r => { if (w.includes(r.code) && w.length > r.code.length) { compEl.innerHTML += makeBadge('字根', r.code, r.mean); hasAnnotation = true; } });
-        etymonEngine.suffixes.forEach(s => { if (w.endsWith(s.code) && w.length > s.code.length + 1) { compEl.innerHTML += makeBadge('字尾', '-' + s.code, s.mean); hasAnnotation = true; } });
-        hasAnnotation ? etymBlock.classList.remove('hidden') : etymBlock.classList.add('hidden');
-
-        // 5. AI 多益例句
-        const exBlock = document.getElementById('exampleBlock');
-        const exList  = document.getElementById('exampleList');
-        exList.innerHTML = '';
-        if (ai.examples && ai.examples.length > 0) {
-          exBlock.classList.remove('hidden');
-          ai.examples.forEach((ex, i) => {
-            exList.innerHTML += `
-              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <span class="text-slate-400 font-mono text-[10px]">情境例句 ${i + 1} · ${ex.pos}</span>
-                  <span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded">${ex.tag || '商務應用'}</span>
-                </div>
-                <p class="text-slate-800 font-mono italic leading-relaxed">"${ex.eng}"</p>
-                <p class="text-slate-500 border-t border-slate-200 pt-1.5">💡 ${ex.zht}</p>
-              </div>`;
-          });
-        } else {
-          exBlock.classList.add('hidden');
-        }
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        loading.classList.add('hidden');
+        quizArea.classList.remove('hidden');
 
       } catch (err) {
-        console.error(err);
-        loadingArea.classList.add('hidden');
-        errorArea.classList.remove('hidden');
+        alert('出題失敗：' + err.message);
+        loading.classList.add('hidden');
+      }
+    });
+
+    function revealAnswer(userPick, correctAns) {
+      analysisBlock.classList.remove('hidden');
+      if (userPick === correctAns) {
+        alert('🎉 答對了！太厲害了！');
+      } else {
+        alert(`❌ 答錯囉！這題答案是 (${correctAns})`);
       }
     }
-
-    function makeBadge(label, code, mean) {
-      return `
-        <div class="bg-white p-2.5 rounded-lg border border-slate-200 flex justify-between items-center">
-          <span class="font-mono font-bold text-slate-900 text-xs">${code} <span class="text-[10px] font-normal text-slate-400">(${label})</span></span>
-          <span class="text-slate-500 text-[11px]">${mean}</span>
-        </div>`;
-    }
-
-    document.getElementById('scanBtnPC').addEventListener('click', masterSearch);
-    document.getElementById('scanBtnMob').addEventListener('click', masterSearch);
-    wordInput.addEventListener('keypress', e => { if (e.key === 'Enter') masterSearch(); });
   </script>
 </body>
 </html>
-const express = require('express');
-const path = require('path');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// ❗❗ 請在此處填入你真正申請到的 Gemini API Key ❗❗
-// 放在伺服器端別人永遠看不到
-const GEMINI_API_KEY = '你的_AIzaSy_金鑰貼在這裡'; 
-
-app.use(express.json());
-app.use(express.static(path.join(__dirname))); // 讓前端網頁可以正常讀取
-
-// API 中轉路由
-app.post('/api/search', async (req, requireResponse) => {
-  try {
-    const { word } = req.body;
-    if (!word) return requireResponse.status(400).json({ error: 'Word is required' });
-
-    const prompt = `你是一個專業的多益（TOEIC）英漢辭典系統，專門為台灣學習者提供精準的繁體中文（台灣用語）定義。
-請分析英文單字 "${word}" 並嚴格符合以下要求：
-1. 提供所有常見於多益考試的詞性與含義
-2. 中文定義必須使用台灣自然語言（例如 initially = 起初、最初；conference = 會議、研討會）
-3. 絕對禁止生硬直譯或中國大陸用語
-4. 每個主要詞性生成一個多益常見情境例句
-5. toeicFreq 評估多益頻率：high/medium/low
-
-嚴格以純 JSON 格式回傳，不含任何 markdown 標記或 \`\`\`：
-{
-  "word": "${word}",
-  "phonetic": "KK音標",
-  "toeicFreq": "high",
-  "meanings": [
-    { "pos": "詞性", "zhDef": "台灣繁體中文定義", "engDef": "簡明英文釋義" }
-  ],
-  "examples": [
-    { "pos": "詞性", "eng": "英文例句", "zht": "繁體中文翻譯", "tag": "情境標籤" }
-  ]
-}`;
-
-    // 在後端悄悄帶上你的 API 金鑰發送請求
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      }
-    );
-
-    const data = await response.json();
-    if (data.error) return requireResponse.status(500).json({ error: data.error.message });
-
-    let rawText = data.candidates[0].content.parts[0].text;
-    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    // 把結果轉發給前端
-    requireResponse.json(JSON.parse(rawText));
-
-  } catch (err) {
-    console.error(err);
-    requireResponse.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
