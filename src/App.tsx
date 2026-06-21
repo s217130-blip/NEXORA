@@ -42,8 +42,11 @@ export default function App() {
     try {
       const res = await fetch("/api/tasks");
       if (res.ok) {
-        const data = await res.json();
-        setTasks(data.tasks);
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
+          setTasks(data.tasks);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch initial tasks from backend:", err);
@@ -61,8 +64,11 @@ export default function App() {
     try {
       const res = await fetch("/api/quiz/stats");
       if (res.ok) {
-        const data = await res.json();
-        setAttemptCount(data.total);
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
+          setAttemptCount(data.total);
+        }
       }
     } catch (err) {
       /* ignore */

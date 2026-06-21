@@ -34,9 +34,16 @@ export default function QuizView({ onAddTask, onAttemptSubmitted }: QuizViewProp
         body: JSON.stringify({ category, difficulty }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        console.error("Invalid JSON:", text);
+      }
+
       if (!res.ok) {
-        throw new Error(data.error || "生成考題時發生錯誤");
+        throw new Error(data?.error || `伺服器回應錯誤 (Status: ${res.status})`);
       }
 
       setQuestion(data);

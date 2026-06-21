@@ -74,7 +74,13 @@ export default function TasksView({
     try {
       // Gather list of recent attempts of quiz (can query /api/quiz/stats or pass generic stats)
       const attemptsStatsRes = await fetch("/api/quiz/stats");
-      const attemptStats = await attemptsStatsRes.json().catch(() => ({}));
+      let attemptStats: any = {};
+      try {
+        const text = await attemptsStatsRes.text();
+        attemptStats = text ? JSON.parse(text) : {};
+      } catch (e) {
+        // ignore
+      }
 
       const res = await fetch("/api/assistant/summary", {
         method: "POST",
@@ -90,9 +96,16 @@ export default function TasksView({
         }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        console.error("Invalid JSON:", text);
+      }
+
       if (!res.ok) {
-        throw new Error(data.error || "AI 綜合診斷生成失敗");
+        throw new Error(data?.error || `AI 綜合診斷生成失敗 (Status: ${res.status})`);
       }
 
       setDiagnosticResult(data);

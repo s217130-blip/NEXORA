@@ -21,8 +21,11 @@ export default function ConsoleView({ statsStamp }: ConsoleViewProps) {
     try {
       const res = await fetch("/api/quiz/stats");
       if (res.ok) {
-        const data = await res.json();
-        setStats(data);
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
+          setStats(data);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch logs:", err);

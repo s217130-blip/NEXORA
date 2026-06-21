@@ -30,9 +30,16 @@ export default function WordScannerView({ onAddTask }: WordScannerViewProps) {
         body: JSON.stringify({ word: clean }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        console.error("Invalid JSON:", text);
+      }
+
       if (!res.ok) {
-        throw new Error(data.error || "單字分析時發生錯誤");
+        throw new Error(data?.error || `請求失敗 (Status: ${res.status})`);
       }
 
       if (data.entry) {

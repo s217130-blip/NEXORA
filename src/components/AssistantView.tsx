@@ -108,9 +108,16 @@ export default function AssistantView() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        console.error("Invalid JSON:", text);
+      }
+
       if (!res.ok) {
-        throw new Error(data.error || "學習助理連線失敗");
+        throw new Error(data?.error || `學習助理連線失敗 (Status: ${res.status})`);
       }
 
       setMessages(prev => [...prev, {
