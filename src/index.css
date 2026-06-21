@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Premium Cosmic Dark Theme Colors */
+  --color-cosmic-950: #080a10;
+  --color-cosmic-900: #0f1322;
+  --color-cosmic-800: #191f35;
+  --color-cosmic-700: #262f4b;
+  --color-cosmic-600: #3b486d;
+  --color-emerald-accent: #10b981;
+  --color-emerald-hover: #059669;
+}
+
+body {
+  background-color: var(--color-cosmic-950);
+  color: #e2e8f0;
+  font-family: var(--font-sans);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cosmic-950);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-cosmic-700);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-cosmic-600);
+}
+
+/* Base custom interactive states */
+.glow-on-hover:hover {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.96); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s infinite ease-in-out;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Nexora - AI多益學習助手",
+  "description": "整合AI單字智慧掃描、TOEIC Part 5文法智能出題、學習助理與每日任務的全方位多益學習平台。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
