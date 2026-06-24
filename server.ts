@@ -1,26 +1,20 @@
 import express from "express";
 import path from "path";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 
 const app = express();
 const PORT = 3000;
 
-// Initialize OpenAI SDK safely
-let aiInstance: OpenAI | null = null;
-function getAI(): OpenAI {
+// Initialize GoogleGenAI SDK safely
+let aiInstance: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
   if (!aiInstance) {
-    let envKey = process.env.OPENROUTER_API_KEY?.trim() || "";
-    if (envKey && !envKey.startsWith("sk-or-")) envKey = "";
-    const apiKey = envKey || "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";
-    aiInstance = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey,
-      defaultHeaders: {
-        "HTTP-Referer": "https://aistudio.google.com/",
-        "X-Title": "AI Studio Applet",
-      }
-    });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is required");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
   }
   return aiInstance;
 }
@@ -98,14 +92,16 @@ Return structured JSON data only. Include:
 - collocations: 2-3 common collocations or phrases related to this word in TOEIC.
 - rootAnalysis: a short breakdown of its prefix, suffix, or root (in Traditional Chinese) to aid memory constraint.`;
 
-    const response = await ai.chat.completions.create({
-      model: "google/gemini-2.5-flash",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 4000
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 4000
+      }
     });
 
-    const parsedData = JSON.parse(response.choices[0].message.content || "{}");
+    const parsedData = JSON.parse(response.text || "{}");
     dictionaryCache.set(cleanWord, parsedData);
     res.json({ hit: false, entry: parsedData });
   } catch (err: any) {
@@ -155,14 +151,16 @@ Strict Rules:
 
 Please return JSON formatted strictly to the specified schema.`;
 
-    const response = await ai.chat.completions.create({
-      model: "google/gemini-2.5-flash",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 4000
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 4000
+      }
     });
 
-    const parsedData = JSON.parse(response.choices[0].message.content || "{}");
+    const parsedData = JSON.parse(response.text || "{}");
     res.json(parsedData);
   } catch (err: any) {
     console.error("Quiz Generate error:", err);
@@ -267,17 +265,17 @@ Strict directives:
 4. Provide immediate, practical studying suggestions or memorization tips (e.g., word roots, prefixes, visual associations).
 5. Ensure a supportive, encouragement-focused pedagogical tone to reduce student anxiety.`;
 
-    const response = await ai.chat.completions.create({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemInstruction },
-        ...geminiContents.map((c: any) => ({ role: (c.role === "model" ? "assistant" : "user") as any, content: c.parts[0].text }))
-      ],
-      temperature: 0.7,
-      max_tokens: 4000
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: geminiContents,
+      config: {
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        temperature: 0.7,
+        maxOutputTokens: 4000
+      }
     });
 
-    const reply = response.choices[0].message.content || "非常抱歉，我暫時無法正常回覆。請再試一次。";
+    const reply = response.text || "非常抱歉，我暫時無法正常回覆。請再試一次。";
     res.json({ reply });
   } catch (err: any) {
     console.error("AI Assistant error:", err);
@@ -304,14 +302,16 @@ Strict Rules:
 2. Generate an encouraging, personalized summary, plus specific bullet points for weaknesses and strategic next steps.
 3. Formulate the response strictly to the schema provided.`;
 
-    const response = await ai.chat.completions.create({
-      model: "google/gemini-2.5-flash",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 4000
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 4000
+      }
     });
 
-    const parsedData = JSON.parse(response.choices[0].message.content || "{}");
+    const parsedData = JSON.parse(response.text || "{}");
     res.json(parsedData);
   } catch (err: any) {
     console.error("AI Summary error:", err);
